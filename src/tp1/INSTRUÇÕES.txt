@@ -1,0 +1,105 @@
+_______________________________________________________________________________
+
+    INSTALAÇÃO 
+_______________________________________________________________________________
+
+1. Primeiramente, é preciso instalar o sistema ROS, a biblioteca ARIA e o simulador MobileSim.
+
+1.1. Instalação do ROS2 Humble
+
+  O processo de instalação e configuração do ROS envolve vários passos, onde se instala uma série de pacotes (o processo demora um pouco) e depois se cria um workspace. 
+  
+  Para isso siga as instruções em 
+  https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html
+
+1.2. Instalação da ARIA 2.7.2
+
+  A versão da biblioteca utilizada é a Aria-2.7.2-mod (contendo modificações no código da 2.7.2. para funcionar nas versões mais novas do Ubuntu).
+
+  Para instalá-la descompacte o arquivo 'Aria-2.7.2-mod ubuntu22.zip', abra um terminal, vá até a pasta 'Aria-2.7.2-mod' e digite 
+    make
+  Depois, para a instalação da biblioteca ser feita no sistema (caminho /usr/local/Aria) é preciso digitar
+    sudo make install
+
+  Também é preciso adicionar o caminho da biblioteca em LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/Aria/lib
+    sudo ldconfig  
+  Para uma solução permanente, adicione o comando no .bashrc:
+    echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/Aria/lib' >> ~/.bashrc
+    
+1.3. Instalação do MobileSim
+
+  Baixe o pacote 'mobilesim_0.7.3+ubuntu12+gcc4.6_amd64.deb'
+
+  Antes de instalá-lo, é preciso instalar algumas dependências do MobileSim:
+    sudo apt install xfonts-100dpi
+
+  Instale o MobileSim via:
+    dpkg -i mobilesim_0.7.3+ubuntu12+gcc4.6_amd64.deb
+
+  Aí pra rodar é só abrir o programa MobileSim e depois selecionar um mapa (por exemplo: 'indoor.map', disponível no Moodle)
+    
+2. Instalando e compilando os pacotes do ROS dentro do workspace que foi criado após a instalação do ROS
+    
+2.1. Supondo que o workspace tenha sido criado com sucesso, copie na pasta src os pacotes descompactados 'phi_aria' e 'tp1'. Deverá ficar assim:
+    CAMINHO_DO_WORKSPACE/
+        build/
+        install/
+        log/
+        src/
+          phi_aria/
+          tp1/ 
+
+2.2. Para compilar os pacotes, basta digitar colcon build DENTRO DA PASTA PRINCIPAL do workspace. 
+Pode ser necessário repetir o comando algumas vezes para a compilação completar 100% com sucesso.
+    colcon build
+
+  OBS: um sistema pode ter vários workspaces, e para utilizá-los é preciso dar um 'source' daquele workspace no terminal. Por exemplo:
+    source CAMINHO_COMPLETO_DO_WORKSPACE/install/setup.bash
+  Fazendo isso, o terminal fica habilitado para rodar os códigos deste workspace
+  
+  Caso se queira deixar isso automático (por só estarmos trabalhando com um workspace) basta incluir este comando source no fim do arquivo .bashrc. Por exemplo:
+    echo "source CAMINHO_COMPLETO_DO_WORKSPACE/install/setup.bash" >> ~/.bashrc
+_______________________________________________________________________________
+
+    COMPILANDO O CÓDIGO 
+_______________________________________________________________________________
+
+Sempre que se quiser recompilar o código, basta usar novamente o comando catkin_make.
+Toda vez que esse comando roda, são recompilados os pacotes contendo arquivos que sofreram alguma alteração:
+    colcon build
+_______________________________________________________________________________
+
+    RODANDO O CÓDIGO 
+_______________________________________________________________________________
+
+1. Primeiro é preciso abrir o simulador MobileSim e selecionar um mapa (por exemplo: 'indoor.map', que está na pasta Maps dentro do pacote tp1)
+
+2. Inicie a conexão com o robô através da RosARIA. Para isso digite em um terminal (sempre dentro do workspace):
+    ros2 launch tp1 p3dx-rosaria.launch.py
+
+Nessa etapa, o robô será ligado no simulador (o campo de visão dele ficará azul) e o visualizador RVIZ será aberto, já mostrando o robô com as leituras dos sensores.
+
+3. Rode o código do framework. Abra um segundo terminal e digite:
+    ros2 run tp1 navigation
+_______________________________________________________________________________
+
+      Controles do framework
+_______________________________________________________________________________
+
+No terminal que está rodando o programa 'navigation', é possível apertar teclas para modificar o comportamento do robô:
+
+-- modos de movimentação
+1 : controle manual simples (velocidades fixas)
+2 : desvio simples de obstaculos
+3 : movimentação longe das paredes usando PID
+
+w ou W: move o robô para frente
+d ou D: move o robô para trás
+a ou A: gira o robô para a esquerda
+s ou S: gira o robô para a direita
+
+Para fechar o programa 'navigation' é preciso apertar ESC e depois Ctrl+C (pois as callbacks do ROS ficam num laço infinito)
+
+Para fechar o launch também é preciso apertar Ctrl+C
+
