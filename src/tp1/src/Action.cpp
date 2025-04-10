@@ -68,12 +68,12 @@ void Action::keepAsFarthestAsPossibleFromWalls(std::vector<float> lasers, std::v
     static double integrated_error = 0.0;
     static auto last_time = std::chrono::system_clock::now();
 
-    const float P = 0.2;
-    const float I = 0.02;
-    const float D = 2.7;
+    const float P = 0.15;
+    const float I = 0.005;
+    const float D = 3.2;
 
-    const float FORWARD_VELOCITY = 1.4;
-
+    const float FORWARD_VELOCITY = 3.4;
+    const float MAX_INTEGRAL = 10.0;
 
     auto now = std::chrono::system_clock::now();
     using Ms = std::chrono::duration<double, std::chrono::milliseconds::period>;
@@ -92,9 +92,16 @@ void Action::keepAsFarthestAsPossibleFromWalls(std::vector<float> lasers, std::v
 
     // Integral
     integrated_error += e * deltaTimeMs / 1000;
-
+    if (integrated_error > MAX_INTEGRAL) {
+        integrated_error = MAX_INTEGRAL;
+    } else if (integrated_error < -MAX_INTEGRAL) {
+        integrated_error = -MAX_INTEGRAL;
+    }
     // Calcula parametros pid
     const float pid = - P * e - D * e_prime - I * integrated_error;
+
+    printf("\n\n Erro: %.2f, Derivada: %.2f, Integral: %.2f, PID: %.2f\n", e, e_prime, integrated_error, pid);
+
     if (willCollide(lasers, sonars)) {
         avoidObstacles(lasers, sonars);
     }
@@ -103,9 +110,6 @@ void Action::keepAsFarthestAsPossibleFromWalls(std::vector<float> lasers, std::v
         linVel = FORWARD_VELOCITY;
         angVel = pid;
     }
-    
-    printf("\n\n Erro: %.2f, Derivada: %.2f, Integral: %.2f, PID: %.2f\n", e, e_prime, integrated_error, pid);
-
 }
 
 void Action::manualRobotMotion(MovingDirection direction)
