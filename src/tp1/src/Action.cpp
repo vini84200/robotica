@@ -103,6 +103,9 @@ void Action::keepAsFarthestAsPossibleFromWalls(std::vector<float> lasers, std::v
         linVel = FORWARD_VELOCITY;
         angVel = pid;
     }
+    
+    printf("\n\n Erro: %.2f, Derivada: %.2f, Integral: %.2f, PID: %.2f\n", e, e_prime, integrated_error, pid);
+
 }
 
 void Action::manualRobotMotion(MovingDirection direction)
