@@ -23,7 +23,7 @@ bool willCollide(std::vector<float> lasers, std::vector<float> sonars) {
     }
 
     // Checando os lasers
-    const int FOV = 25;
+    const int FOV = 20;
 
     for (int i = 90 - FOV; i <= 90 + FOV; i++) {
         if (lasers[i] <= COLLISION_THRESHOLD) {
@@ -98,7 +98,7 @@ float get_closest_laser(std::vector<float> lasers, LaserSpan span)
 
 
 
-void Action::keepAsFarthestAsPossibleFromWalls(std::vector<float> lasers, std::vector<float> sonars)
+void Action::keepAsFarthestAsPossibleFromWalls(std::vector<float> lasers, std::vector<float> sonars, MotionCallback callback)
 {
     static double last_error = 0.0;
     static double integrated_error = 0.0;
@@ -119,7 +119,7 @@ void Action::keepAsFarthestAsPossibleFromWalls(std::vector<float> lasers, std::v
     }
     last_time = now;
 
-    const int SIDE_FOV = 20;
+    const int SIDE_FOV = 45;
     LaserSpan left_span = {0, SIDE_FOV};
     LaserSpan right_span = {180 - SIDE_FOV, 180};
 
@@ -135,6 +135,7 @@ void Action::keepAsFarthestAsPossibleFromWalls(std::vector<float> lasers, std::v
     // Derivada
     float e_prime = (e - last_error) / (deltaTimeMs / 1000);
     last_error = e;
+    e_prime = limit(e_prime, 2.5);
 
     // Integral
     integrated_error += e * deltaTimeMs / 1000;
@@ -153,6 +154,8 @@ void Action::keepAsFarthestAsPossibleFromWalls(std::vector<float> lasers, std::v
     printf("\n\n Erro: %.2f, Derivada: %.2f, Integral: %.2f, PID: %.2f\n", e, e_prime, integrated_error, pid);
     // Printa os valores relativo ao PID
     printf("PID: %.2f, P: %.2f, I: %.2f, D: %.2f\n", pid, P * e/pid, I * integrated_error/pid, D * e_prime/pid);
+
+    callback(e, e_prime, integrated_error, pid);
 
     if (willCollide(lasers, sonars)) {
         avoidObstacles(lasers, sonars);

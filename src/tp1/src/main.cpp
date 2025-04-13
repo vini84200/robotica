@@ -1,10 +1,12 @@
 #include <iostream>
 #include <pthread.h>
+#include <functional>
 
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
+#include <std_msgs/msg/float32.hpp>
 
 #include "Action.h"
 #include "Perception.h"
@@ -26,9 +28,34 @@ public:
     sub_sonar = this->create_subscription<sensor_msgs::msg::PointCloud2>("/sonar", 100,
                                                                          std::bind(&Perception::receiveSonar, &perception, _1));
     timer_ = this->create_wall_timer(100ms, std::bind(&NavigationNode::timer_callback, this));
+    // Debug publishers
+    error_ = this->create_publisher<std_msgs::msg::Float32>("/error", 1);
+    derivative_error_ = this->create_publisher<std_msgs::msg::Float32>("/derivative_error", 1);
+    integrated_error_ = this->create_publisher<std_msgs::msg::Float32>("/integrated_error", 1);
+    pid_ = this->create_publisher<std_msgs::msg::Float32>("/pid", 1);
   }
 
 private:
+  void pid_info_callback(float error, float derivative, float integral, float pid)
+  {
+    std_msgs::msg::Float32 error_msg;
+    error_msg.data = error;
+    error_->publish(error_msg);
+
+    std_msgs::msg::Float32 derivative_error_msg;
+    derivative_error_msg.data = derivative;
+    derivative_error_->publish(derivative_error_msg);
+
+    std_msgs::msg::Float32 integrated_error_msg;
+    integrated_error_msg.data = integral;
+    integrated_error_->publish(integrated_error_msg);
+
+    std_msgs::msg::Float32 pid_msg;
+    pid_msg.data = pid;
+    pid_->publish(pid_msg);
+
+  }
+
   void timer_callback()
   {
     // Get latest sensor readings
@@ -53,7 +80,7 @@ private:
     }
     else if (mc.mode == FARFROMWALLS)
     {
-      action_.keepAsFarthestAsPossibleFromWalls(lasers, sonars);
+      action_.keepAsFarthestAsPossibleFromWalls(lasers, sonars, std::bind(&NavigationNode::pid_info_callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
     }
 
     action_.correctVelocitiesIfInvalid();
@@ -70,6 +97,11 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_twist;
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr sub_laserscan;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_sonar;
+
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr error_;
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr derivative_error_;
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr integrated_error_;
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr pid_;
 
   Action &action_;
   Perception &perception_;
@@ -99,6 +131,7 @@ void *mainThreadFunction(void *arg)
 
   return NULL;
 }
+
 
 int main(int argc, char **argv)
 {
