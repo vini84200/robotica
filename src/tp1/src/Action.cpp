@@ -62,14 +62,50 @@ void Action::avoidObstacles(std::vector<float> lasers, std::vector<float> sonars
     }
 }
 
+float limit(float value, float min, float max)
+{
+    if (value < min) {
+        return min;
+    } else if (value > max) {
+        return max;
+    } else {
+        return value;
+    }
+}
+
+float limit(float value, float max)
+{
+    return limit(value, -max, max);
+}
+
+struct LaserSpan {
+    int start;
+    int end;
+};
+
+float get_closest_laser(std::vector<float> lasers, LaserSpan span)
+{
+    float closest = lasers[span.start];
+    for (int i = span.start; i <= span.end; i++) {
+        if (lasers[i] < closest) {
+            closest = lasers[i];
+        }
+    }
+    return closest;
+}
+
+
+
+
+
 void Action::keepAsFarthestAsPossibleFromWalls(std::vector<float> lasers, std::vector<float> sonars)
 {
     static double last_error = 0.0;
     static double integrated_error = 0.0;
     static auto last_time = std::chrono::system_clock::now();
 
-    const float P = 0.15;
-    const float I = 0.005;
+    const float P = 0.5;
+    const float I = 0.002;
     const float D = 3.2;
 
     const float FORWARD_VELOCITY = 3.4;
@@ -83,30 +119,47 @@ void Action::keepAsFarthestAsPossibleFromWalls(std::vector<float> lasers, std::v
     }
     last_time = now;
 
+    const int SIDE_FOV = 20;
+    LaserSpan left_span = {0, SIDE_FOV};
+    LaserSpan right_span = {180 - SIDE_FOV, 180};
+
     // calcular a distancia das paredes
-    float e = lasers[180] - lasers[0];
-    
+    float e_left = get_closest_laser(lasers, left_span);
+    float e_right = get_closest_laser(lasers, right_span);
+    float e = e_right - e_left;
+
+    // Limita o erro
+    const float MAX_ERROR = 2.5;
+    e = limit(e, MAX_ERROR);
+
     // Derivada
     float e_prime = (e - last_error) / (deltaTimeMs / 1000);
     last_error = e;
 
     // Integral
     integrated_error += e * deltaTimeMs / 1000;
-    if (integrated_error > MAX_INTEGRAL) {
-        integrated_error = MAX_INTEGRAL;
-    } else if (integrated_error < -MAX_INTEGRAL) {
-        integrated_error = -MAX_INTEGRAL;
-    }
+    // Atenua a integral
+    integrated_error *= 0.95;
+
+    // Limitar a integral
+    integrated_error = limit(integrated_error, MAX_INTEGRAL); 
+
     // Calcula parametros pid
-    const float pid = - P * e - D * e_prime - I * integrated_error;
+    float pid = - P * e - D * e_prime - I * integrated_error;
+
+    // Limita a velocidade angular
+    pid = limit(pid, 0.8);
 
     printf("\n\n Erro: %.2f, Derivada: %.2f, Integral: %.2f, PID: %.2f\n", e, e_prime, integrated_error, pid);
+    // Printa os valores relativo ao PID
+    printf("PID: %.2f, P: %.2f, I: %.2f, D: %.2f\n", pid, P * e/pid, I * integrated_error/pid, D * e_prime/pid);
 
     if (willCollide(lasers, sonars)) {
         avoidObstacles(lasers, sonars);
     }
     else
     {
+        printf("No imminent collision detected.\n");
         linVel = FORWARD_VELOCITY;
         angVel = pid;
     }
