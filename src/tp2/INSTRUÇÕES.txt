@@ -1,0 +1,47 @@
+_______________________________________________________________________________
+
+    INSTALAÇÃO 
+_______________________________________________________________________________
+    
+1. Instalando e compilando o pacote do ROS do Trabalho 2 dentro do nosso workspace
+    
+1.1. No workspace usada nesta disciplina, copie na pasta src o pacote descompactado 'tp2'. Deverá ficar assim:
+    CAMINHO_DO_WORKSPACE/
+        build/
+        devel/
+        src/
+          phi_aria/
+          tp1/ 
+          tp2/  <--- NOVO PACOTE
+
+1.2. Para compilar os pacotes, basta digitar colcon build DENTRO DA PASTA PRINCIPAL do workspace. 
+Pode ser necessário repetir o comando algumas vezes para a compilação completar 100% com sucesso.
+    colcon build
+
+_______________________________________________________________________________
+
+    COMPILANDO O CÓDIGO 
+_______________________________________________________________________________
+
+Sempre que se quiser recompilar o código, basta usar novamente o comando colcon build.
+Toda vez que esse comando roda, são recompilados os pacotes contendo arquivos que sofreram alguma alteração:
+    colcon build
+_______________________________________________________________________________
+
+    RODANDO O CÓDIGO 
+_______________________________________________________________________________
+
+1. Primeiro é preciso abrir o simulador MobileSim e selecionar um mapa (por exemplo: 'indoor.map')
+
+2. Inicie a conexão com o robô através da RosARIA. Para isso digite em um terminal (sempre dentro do workspace):
+    ros2 launch tp2 p3dx-rosaria.launch.py
+
+Nessa etapa, o robô será ligado no simulador (o campo de visão dele ficará azul) e o visualizador RVIZ será aberto, já mostrando o robô com as leituras dos sensores.
+
+3. Para andar com o robô, rode o código do trabalho 1. Abra um segundo terminal e digite:
+    ros2 run tp1 navigation
+    
+4. Para realizar o mapeamento, rode o código do trabalho 2 em um novo terminal:
+    ros2 run tp2 mapping
+    
+OBS: para visualizar os diferentes mapas, desmarque/marque o topico adequado no RViz

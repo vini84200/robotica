@@ -12,7 +12,7 @@ def generate_launch_description():
     urdf_file = os.path.join(urdf_dir, 'p3dx.urdf.xacro')
     with open(urdf_file, 'r') as infp:
         robot_desc = infp.read()
-    rviz_file = FindPackageShare('tp1').find('tp1') + '/config/p3dx.rviz'
+    rviz_file = FindPackageShare('tp2').find('tp2') + '/config/p3dx.rviz'
     
     aria_port = 'port:=localhost'                # simulation
     # aria_port = 'port:=192.168.1.11:10002'     # real robot
