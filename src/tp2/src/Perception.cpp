@@ -75,7 +75,7 @@ nav_msgs::msg::OccupancyGrid& Perception::updateMapLaserWithLogOdds(const std::v
 
     const float DELTA_PHI = 1.;
     const float DELTA_R = 0.2;
-    const float Z_MAX = 2.0;
+    const float Z_MAX = maxRangeInt;
     const float P_OCC = 0.56;
     const float P_FREE = 0.45;
     
@@ -86,20 +86,20 @@ nav_msgs::msg::OccupancyGrid& Perception::updateMapLaserWithLogOdds(const std::v
         for (int y = ry-maxRangeInt; y <= ry+maxRangeInt; y++)
         {
             // Calcula angulo entre a proa do robo e a celula
-            float angle = normalizeAngleRAD(
-                atan2((float)y-ry,(float)x-rx) - robot.theta
+            float angle = normalizeAngleDEG(
+                RAD2DEG(atan2((float)y-ry,(float)x-rx)) -robot.theta
             );
-            int laser_beam = getNearestLaserBeam( RAD2DEG(angle) );
+            int laser_beam = getNearestLaserBeam( angle );
             float laser_beam_ang = getAngleOfLaserBeam(laser_beam);
-            float cell_distance = sqrt((x-rx)^2 + (y-ry)^2) / scale_;
+            float cell_distance = sqrt(pow(x-rx, 2.) + pow(y-ry, 2)) / scale_;
             float laser_dist = z[laser_beam];
             if (fabs(
-                laser_beam_ang-RAD2DEG(angle)
+                laser_beam_ang-angle
             ) >= DELTA_PHI) {
                 // Fora do angulo aceitavel do sensor
                 continue;
             }
-            if (cell_distance>laser_dist+DELTA_PHI) {
+            if (cell_distance>std::min(Z_MAX,(float) (laser_dist + DELTA_R/2.))) {
                 // Atras de obstaculo, desconhecido
                 continue;
             }
@@ -113,6 +113,7 @@ nav_msgs::msg::OccupancyGrid& Perception::updateMapLaserWithLogOdds(const std::v
             int index = getCellIndexFromXY(x,y);
             gridLaserLogOdds_[index] += getLogOddsFromLikelihood(prob);
             msg_mapLaserLogOdds_.data[index] = getLikelihoodFromLogOdds(gridLaserLogOdds_[index]) * 100;
+            // msg_mapLaserLogOdds_.data[index] = 120;
         }
     }
     
