@@ -129,13 +129,15 @@ nav_msgs::msg::OccupancyGrid& Perception::updateMapLaserWithLogOdds(const std::v
 
 nav_msgs::msg::OccupancyGrid& Perception::updateMapLaserWithHIMM(const std::vector<float>& z, const Pose2D& robot)
 {
-    int rx = robot.x*scale_;
-    int ry = robot.y*scale_;
+    int rx = robot.x * scale_;
+    int ry = robot.y * scale_;
 
     float maxRange = 10.0; // 10 m
     float lambda_r = 0.2; //  20 cm
     float lambda_phi = 1.0;  // 1 degree
-    int maxRangeInt = maxRange*scale_;
+    int maxRangeInt = maxRange * scale_;
+    const int HIMM_MAX = 15;
+    const int HIMM_MIN = 0;
     
     // TODO:
     // varrer celulas ao redor de (rx,ry) em um range de -maxRangeInt ate +maxRangeInt nas duas direcoes
@@ -147,6 +149,44 @@ nav_msgs::msg::OccupancyGrid& Perception::updateMapLaserWithHIMM(const std::vect
     
     // para visualizar corretamente no rviz, sempre atualizar msg_mapLaserHIMM_.data[i]
     // importante lembrar de converter o valor, originalmente de 0 a 15, para OccupancyGrid data (que vai de 0 a 100)
+
+    for (int x = rx - maxRangeInt; x <= rx + maxRangeInt; x++)
+    {
+        for (int y = ry - maxRangeInt; y <= ry + maxRangeInt; y++)
+        {
+            // Calcula angulo entre a proa do robo e a celula
+            float angle = normalizeAngleDEG(
+                RAD2DEG(atan2((float)y - ry, (float)x - rx)) - robot.theta
+            );
+            int laser_beam = getNearestLaserBeam(angle);
+            float laser_beam_ang = getAngleOfLaserBeam(laser_beam);
+            float cell_distance = sqrt(pow(x - rx, 2.) + pow(y - ry, 2)) / scale_;
+            float laser_dist = z[laser_beam];
+            if (fabs(
+                laser_beam_ang-angle
+            ) >= lambda_phi) {
+                // Fora do angulo aceitavel do sensor
+                continue;
+            }
+            if (cell_distance>std::min((float) maxRangeInt,(float) (laser_dist + lambda_r/2.))) {
+                // Atras de obstaculo, desconhecido
+                continue;
+            }
+
+            int index = getCellIndexFromXY(x, y);
+
+            if (cell_distance < laser_dist - 0.2) {
+                // Célula livre
+                gridLaserHIMM_[index] = std::max(gridLaserHIMM_[index] - 1, HIMM_MIN);
+            } else if (fabs(cell_distance - laser_dist) < 0.2) {
+                // Célula ocupada
+                gridLaserHIMM_[index] = std::min(gridLaserHIMM_[index] + 3, HIMM_MAX);
+            }
+
+            // Atualiza o OccupancyGrid
+            msg_mapLaserHIMM_.data[index] = (gridLaserHIMM_[index] * 100) / HIMM_MAX;
+        }
+    }
 
 
 
