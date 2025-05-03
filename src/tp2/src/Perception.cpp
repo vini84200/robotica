@@ -201,24 +201,50 @@ nav_msgs::msg::OccupancyGrid& Perception::updateMapSonar(const std::vector<float
 
     float maxRange = 5.0; // 5 m
     float lambda_r = 0.2; //  50 cm
-    int maxRangeInt = maxRange*scale_;
-
+    const int HIMM_MAX = 15;
+    const int HIMM_MIN = 0;
     // TODO:
     // varrer as celulas no eixo acustico de cada leitura do sonar usando um algoritmo de rasterização de linhas (ex: DDA)
+    for (int k=1; k<8; k++){
+        float sonar_angle = normalizeAngleDEG( getAngleOfSonarBeam(k) + robot.theta );
+        float sonar_dist = z[k] * scale_;
 
-    // para encontrar o angulo (em graus) da leitura feita usar getAngleOfSonarBeam(k) + robot.theta
-    // atualizar celulas livres e ocupadas (se for o caso) usando HIMM
-    
-    // para acessar/atualizar ocupacao da i-esima celula do mapa usar:
-    // gridSonar_[i]
-    // onde i eh o indice da celula u,v, que pode ser obtido com a funcao auxiliar i=getCellIndexFromXY(u,v);
-    
-    // para visualizar corretamente no rviz, sempre atualizar msg_mapSonar_.data[i]
-    // importante lembrar de converter o valor de ocupação, probabilidade entre 0 e 1, para OccupancyGrid data (que vai de 0 a 100)
+        // Coordenadas finais do feixe do sonar
+        int x_end = rx + sonar_dist * cos(DEG2RAD(sonar_angle));
+        int y_end = ry + sonar_dist * sin(DEG2RAD(sonar_angle));
 
+        // Algoritmo DDA para rasterizar a linha
+        int dx = x_end - rx;
+        int dy = y_end - ry;
+        int steps = std::max(abs(dx), abs(dy));
+        float x_inc = dx / (float)steps;
+        float y_inc = dy / (float)steps;
 
+        float x = rx;
+        float y = ry;
 
+        for (int i = 0; i <= steps; i++)
+        {
+            int cell_x = round(x);
+            int cell_y = round(y);              
+            int index = getCellIndexFromXY(cell_x, cell_y);
 
+            float distance = sqrt(pow(cell_x - rx, 2) + pow(cell_y - ry, 2)) / scale_;
+
+            if (distance < sonar_dist - lambda_r / 2.0)
+            {
+                gridSonar_[index] = std::max(gridSonar_[index] - 1, static_cast<float>(HIMM_MIN));
+            }
+            else if (distance <= sonar_dist + lambda_r / 2.0)
+            {
+                gridSonar_[index] = std::min(gridSonar_[index] + 3, static_cast<float>(HIMM_MAX));
+            }
+            msg_mapSonar_.data[index] = (gridSonar_[index] * 100) / HIMM_MAX;
+
+            x += x_inc;
+            y += y_inc;
+        }
+    }
     return msg_mapSonar_;
 }
 
