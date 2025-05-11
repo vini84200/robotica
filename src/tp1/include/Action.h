@@ -2,6 +2,7 @@
 #define ACTION_H
 
 #include <vector>
+#include <functional>
 
 enum MotionMode {MANUAL, WANDER, FARFROMWALLS};
 enum MovingDirection {STOP, FRONT, BACK, LEFT, RIGHT, AUTO};
@@ -12,6 +13,7 @@ typedef struct
     MovingDirection direction;
 } MotionControl;
 
+typedef std::function<void(float, float, float, float)> MotionCallback;
 
 class Action
 {
@@ -20,7 +22,7 @@ public:
     
     void manualRobotMotion(MovingDirection direction);
     void avoidObstacles(std::vector<float> lasers, std::vector<float> sonars);
-    void keepAsFarthestAsPossibleFromWalls(std::vector<float> lasers, std::vector<float> sonars);
+    void keepAsFarthestAsPossibleFromWalls(std::vector<float> lasers, std::vector<float> sonars, MotionCallback callback);
 
     MotionControl handlePressedKey(char key);
 

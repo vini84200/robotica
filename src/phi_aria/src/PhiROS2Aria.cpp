@@ -47,13 +47,13 @@ PhiROS2Aria::PhiROS2Aria() : Node("phi_aria_p3dx"),
     // other argmuments (optional) are callbacks, or a boolean "latch" flag (whether to send current data to new
     // subscribers when they subscribe).
 
-    pose_pub = this->create_publisher<nav_msgs::msg::Odometry>("pose", 1000);
-    absTruePose_pub = this->create_publisher<nav_msgs::msg::Odometry>("absTruePose", 1000);
-    relTruePose_pub = this->create_publisher<nav_msgs::msg::Odometry>("relTruePose", 1000);
+    pose_pub = this->create_publisher<nav_msgs::msg::Odometry>("pose", 5);
+    // absTruePose_pub = this->create_publisher<nav_msgs::msg::Odometry>("absTruePose", 5);
+    // relTruePose_pub = this->create_publisher<nav_msgs::msg::Odometry>("relTruePose", 5);
 
-    sonar_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("sonar", 50);
-    laserScan_pub = this->create_publisher<sensor_msgs::msg::LaserScan>("laser_scan", 20);
-    laserCloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("laser_cloud", 50);
+    sonar_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("sonar", 5);
+    laserScan_pub = this->create_publisher<sensor_msgs::msg::LaserScan>("laser_scan", 5);
+    laserCloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("laser_cloud", 5);
 
     cmd_vel_sub = this->create_subscription<geometry_msgs::msg::Twist>("cmd_vel", 1, std::bind(&PhiROS2Aria::cmdvel_cb, this, _1));
 
@@ -234,11 +234,22 @@ void PhiROS2Aria::publish()
 
     assert(laser);
 
+    std::list<ArSensorReading *>::const_iterator it;
+    ArPose poseTaken;
+
     laser->lockDevice();
     // get laser scan data
     const std::list<ArSensorReading *> *readings = laser->getRawReadings();
     assert(readings);
-    //RCLCPP_INFO(this->get_logger(), "laserscan:  %lu readings\n", readings->size());
+    RCLCPP_INFO(this->get_logger(), "laserscan:  %lu readings\n", readings->size());
+
+    // get pose when the central reading was taken
+    it = readings->begin();
+    if(!readings->empty()){
+        for(int i=0;i<readings->size()/2;i++)
+            ++it;
+        poseTaken = (*it)->getPoseTaken();
+    }
 
     // get laser point cloud data
     assert(laser->getCurrentBuffer());
@@ -248,8 +259,8 @@ void PhiROS2Aria::publish()
     laser->unlockDevice();
 
     // Note, this is called via SensorInterpTask callback (myPublishCB, named "ROSPublishingTask"). ArRobot object 'robot' sholud not be locked or unlocked.
-    ArPose pos = nextPos;
-    nextPos = robot->getPose();
+    ArPose pos = poseTaken;
+
     rclcpp::Time now = this->now();
     //RCLCPP_INFO(this->get_logger(), "DEPOIS pose x: %f, pose y: %f, pose angle: %f",pos.getX(),pos.getY(),pos.getTh());
     
@@ -290,10 +301,8 @@ void PhiROS2Aria::publish()
     t.transform.translation.x = position.pose.pose.position.x;
     t.transform.translation.y = position.pose.pose.position.y;
     t.transform.translation.z = position.pose.pose.position.z;
-    // Send the transformation
-    tf_broadcaster_->sendTransform(t);
 
-    if (isSimulation_)
+    /*if (isSimulation_)
     {
         Pose simAbsoluteTruePose = getAbsoluteTruePose();
         position.pose.pose.position.x = simAbsoluteTruePose.x;
@@ -312,7 +321,7 @@ void PhiROS2Aria::publish()
         tf_transform.setRotation(q);
         position.pose.pose.orientation = tf2::toMsg(tf_transform).rotation;
         //relTruePose_pub->publish(position);
-    }
+    }*/
 
     // Publish sonar information, if enabled.
     sensor_msgs::msg::PointCloud2 cloud;        // sonar readings.
@@ -489,7 +498,7 @@ void PhiROS2Aria::publish()
 
     if(okToPublish)
     {
-        //pose_pub->publish(position);
+        pose_pub->publish(position);
         RCLCPP_INFO(this->get_logger(), "publish: (time %d) pose x: %f, pose y: %f, pose angle: %f; linear vel x: %f, vel y: %f; angular vel z: %f",
                 position.header.stamp.sec,
                 (double)position.pose.pose.position.x,
@@ -499,8 +508,11 @@ void PhiROS2Aria::publish()
                 (double)position.twist.twist.linear.y,
                 (double)position.twist.twist.angular.z);
 
-        absTruePose_pub->publish(position);
-        relTruePose_pub->publish(position);
+        // Send the transformation
+        tf_broadcaster_->sendTransform(t);
+
+        // absTruePose_pub->publish(position);
+        // relTruePose_pub->publish(position);
 
         sonar_pub->publish(cloud);
         RCLCPP_INFO(this->get_logger(), sonar_debug_info.str().c_str());
