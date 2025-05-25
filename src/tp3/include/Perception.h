@@ -51,6 +51,8 @@ private:
     double computeDirectionOfNavigation(int robotIndex, int goalIndex);
     int getNearestFreeCell(Pose2D robotPose);
 
+    bool isGoal(int cellIndex);
+
     bool started_;
     bool validDirection_;
 

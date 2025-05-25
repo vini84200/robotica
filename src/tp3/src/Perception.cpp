@@ -258,17 +258,100 @@ void Perception::updateCellsClassification()
     // 3) Marcar fronteiras (ignorando OCC_OCCUPIED e OCC_NEAROBSTACLE)
     // 4) Marcar restantes, que nao sao inexploradas, como livre
 
- 
- 
+    std::vector<int8_t> occupancyGridValues = std::vector<int8_t>(occupancyTypeGrid_.begin(), occupancyTypeGrid_.end());
 
+    int FREE_THRESHOLD = 50;
+    int OCCUPIED_THRESHOLD = 50;
 
+    for (int x = minKnownX_; x <= maxKnownX_; x++)
+    {
+        for (int y = minKnownY_; y <= maxKnownY_; y++)
+        {
+            int i = x + y * numCellsX_;
+            if (occupancyGridValues[i] == OCC_UNEXPLORED)
+            {
+                occupancyTypeGrid_[i] = OCC_UNEXPLORED;
+            }
+            else if (occupancyGridValues[i] >= OCCUPIED_THRESHOLD)
+            {
+                occupancyTypeGrid_[i] = OCC_OCCUPIED;
+            }
+            else if (occupancyGridValues[i] <= FREE_THRESHOLD)
+            {
+                // Check if its near an obstacle
+                bool nearObstacle = false;
+                for (int dx = -dangerZoneWidth; dx <= dangerZoneWidth; dx++)
+                {
+                    for (int dy = -dangerZoneWidth; dy <= dangerZoneWidth; dy++)
+                    {
+                        if (dx == 0 && dy == 0)
+                            continue;
 
+                        int nx = x + dx;
+                        int ny = y + dy;
 
+                        if (nx >= minKnownX_ && nx <= maxKnownX_ && ny >= minKnownY_ && ny <= maxKnownY_)
+                        {
+                            int ni = nx + ny * numCellsX_;
+                            if (occupancyGridValues[ni] >= OCCUPIED_THRESHOLD)
+                            {
+                                nearObstacle = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (nearObstacle)
+                        break;
+                }
+                if (nearObstacle)
+                {
+                    occupancyTypeGrid_[i] = OCC_NEAROBSTACLE;
+                }
+                else
+                {
+                    // Check if its a frontier cell, i.e., a free cell adjacent to an unexplored cell
+                    bool isFrontier = false;
+                    for (int dx = -1; dx <= 1; dx++) 
+                    {
+                        for (int dy = -1; dy <= 1; dy++) 
+                        {
+                            if (dx == 0 && dy == 0)
+                                continue;
+                            int nx = x + dx;
+                            int ny = y + dy;
 
+                            if (nx >= minKnownX_ && nx <= maxKnownX_ && ny >= minKnownY_ && ny <= maxKnownY_)
+                            {
+                                int ni = nx + ny * numCellsX_;
+                                if (occupancyGridValues[ni] == OCC_UNEXPLORED)
+                                {
+                                    isFrontier = true;
+                                    break;
+                                }
+                            }
+                            else 
+                            {
+                                // If the neighbor is out of bounds, consider it as unexplored
+                                isFrontier = true;
+                                break;
+                            }
 
+                        }
+                    }
 
-
-
+                    if (isFrontier)
+                    {
+                        occupancyTypeGrid_[i] = OCC_FRONTIER;
+                    }
+                    else
+                    {
+                        occupancyTypeGrid_[i] = OCC_FREE;
+                    }
+                }
+            }
+            
+        }
+    }
 
 }
 
@@ -293,17 +376,18 @@ void Perception::computeHeuristic(int goalIndex)
     ///   parentGrid_[i] - valor pi (indicando o pai da celula): recebe -1, pois a priori nao aponta para ninguem. 
     ///   hValueGrid_[i] - valor h - distancia para o goal
 
- 
- 
-
-
-
-
-
-
-
-
-
+    for (int x = minKnownX_; x <= maxKnownX_; x++)
+    {
+        for (int y = minKnownY_; y <= maxKnownY_; y++)
+        {
+            int i = x + y * numCellsX_;
+            gValueGrid_[i] = DBL_MAX;
+            double distance = sqrt(pow(x - goalX, 2.0) + pow(y - goalY, 2.0));
+            hValueGrid_[i] = distance;
+            fValueGrid_[i] = DBL_MAX;
+            parentGrid_[i] = -1;
+        }
+    }
 
 }
 
@@ -351,32 +435,86 @@ int Perception::computeShortestPathToFrontier(int robotCellIndex)
     gValueGrid_[robotCellIndex] = 0;
 
     std::pair<double, int> inicio;
-    inicio.first = fValueGrid_[robotCellIndex];
+    inicio.first = hValueGrid_[robotCellIndex];
     inicio.second = robotCellIndex;
 
     pq.push(inicio);
 
+    std::cout << "ASTAR *" << std::endl;
+    int i  = 0;
+
     /// Completar algoritmo A Star, consultando a fila enquanto ela nao estiver vazia
-    ///     while(!pq.empty())
+    while(!pq.empty()) {
+        i++;
+        if (i % 1000 == 0) {
+            std::cout << "A* iteration: " << i << std::endl;
+        }
+        auto node = pq.top();
+        pq.pop();
+        int id = node.second;
+        double gScore = gValueGrid_[id];
+        int x = id % numCellsX_;
+        int y = id / numCellsX_;
 
- 
- 
+        if (this->isGoal(id)) {
+            goal = id;
+            std::cout << "Goal found at cell: " << goal << std::endl;
+            return id;
+        }
 
+        // Expand neighbours
+        for (int i = 0; i < 8; i++)
+        {
+            auto os = offset[i];
 
+            int dx = os[0];
+            int dy = os[1];
+            int nx = x + dx;
+            int ny = y + dy;
+            // Check if is valid
+            if (
+                nx < minKnownX_ || nx > maxKnownX_ || ny < minKnownY_ || ny > maxKnownY_)
+                continue;
+            int ni = nx + ny * numCellsX_;
+            if (
+                occupancyTypeGrid_[ni] == OCC_OCCUPIED || occupancyTypeGrid_[ni] == OCC_UNEXPLORED)
+            {
+                continue;
+            }
+            double c = cost[i];
+            if (
+                occupancyTypeGrid_[ni] == OCC_NEAROBSTACLE)
+            {
+                c += 20.;
+            }
 
+            double tentative_gscore = c + gScore;
+            if (gValueGrid_[ni] > tentative_gscore)
+            {
+                parentGrid_[ni] = id;
+                gValueGrid_[ni] = tentative_gscore;
+                double f = tentative_gscore + hValueGrid_[ni];
+                fValueGrid_[ni] = f;
+                std::pair<double, int> vizinho;
+                vizinho.first = f;
+                vizinho.second = ni;
+                pq.push(vizinho);
+            }
+        }
+    }
 
-
-
-
-
-
-
-
-
-
-
+    std::cout << "No goal found" << std::endl;
 
     return goal;
+}
+
+bool Perception::isGoal(int cellIndex) {
+    for (auto indices : frontierCentersIndices) {
+        if (indices == cellIndex) { 
+            return true;
+        }
+    }
+    return false;
 }
 
 ////////////////////////////////////////////////////////

@@ -41,9 +41,10 @@ public:
 private:
   void timer_callback()
   {
+    std::cout << "\x1B[2J\x1B[H";
     // Get current robot pose given by ODOM
     Pose2D robotPose = perception_.getLatestPoseFromOdometry();
-    RCLCPP_INFO(this->get_logger(), "Odometry (%f %f %f)", robotPose.x, robotPose.y, robotPose.theta);
+    // RCLCPP_INFO(this->get_logger(), "Odometry (%f %f %f)", robotPose.x, robotPose.y, robotPose.theta);
 
     if(perception_.hasValidMap()){
       // Update potential field information
@@ -62,6 +63,13 @@ private:
     char ch = pressedKey;
     MotionControl mc = action_.handlePressedKey(ch);
     std::cout << mc.mode << ' ' << mc.direction << std::endl;
+
+    if (ch == 'q')
+    {
+      std::cout << "Exiting..." << std::endl;
+      rclcpp::shutdown();
+      exit(0);
+    }
 
     // Compute next action
     if (mc.mode == MANUAL)
