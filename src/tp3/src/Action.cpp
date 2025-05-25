@@ -16,23 +16,30 @@ Action::Action()
 /// FUNCOES DE MOVIMENTACAO ///
 ///////////////////////////////
 
+const double ANGLE_THRESHOLD = 10.0; // degrees
+const double FORWARD_VELOCITY = 0.5; // m/s
+const double ROTATION_VELOCITY = 0.5; // rad/s
+
 void Action::followDirection(double angle)
 {
-    /// TODO:
-    /// atualiza valores de velocidade linear e angular (variaveis linVel e angVel)
-    /// usando controle P em funcao do angulo da direção de movimento desejada
-    /// quanto maior o angulo desejado, maior a velocidade angular aplicada
-    
-    /// se o valor do angulo for muito grande (tanto positivo quanto negativo),
-    /// fazer robô girar sobre o proprio eixo
-
-    /// usar valores maximos baixos em linVel (ex: 0.2) e angVel (ex: 0.3)
-
-
-
-
-
-
+    if (fabs(angle) > ANGLE_THRESHOLD)
+    {
+        if (angle > 0)
+        {
+            linVel = 0.0;
+            angVel = ROTATION_VELOCITY;
+        }
+        else
+        {
+            linVel = 0.0;
+            angVel = -ROTATION_VELOCITY;
+        }
+    }
+    else
+    {
+        linVel = FORWARD_VELOCITY;
+        angVel = ROTATION_VELOCITY * angle / ANGLE_THRESHOLD;
+    }
 }
 
 void Action::manualRobotMotion(MovingDirection direction)
