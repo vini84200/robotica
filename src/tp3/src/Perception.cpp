@@ -140,11 +140,11 @@ void Perception::receiveGridmap(const nav_msgs::msg::OccupancyGrid::ConstSharedP
 
     // Select center of nearest viable frontier
     int nearestFrontierIndex = clusterFrontiersAndReturnIndexOfClosestOne(robotIndexInFreeSpace);
-    if(nearestFrontierIndex != -1){
+    // if(nearestFrontierIndex != -1){
 
         // Compute A*
         // first - compute heuristic in all cells (euclidian distance to the goal)
-        computeHeuristic(nearestFrontierIndex);
+        precomputeHeuristic();
         // second - compute the A* algorithm
         int goal = computeShortestPathToFrontier(robotIndexInFreeSpace);
 
@@ -167,9 +167,9 @@ void Perception::receiveGridmap(const nav_msgs::msg::OccupancyGrid::ConstSharedP
         tf2::Quaternion quat_tf;
         quat_tf.setRPY( 0, 0, yaw );
         msg_directionOfNavigation_.pose.orientation=tf2::toMsg(quat_tf);
-    }else{
-        validDirection_=false;
-    }
+    // }else{
+    //     validDirection_=false;
+    // }
 
     // Update messages
     msg_occTypes_.header = value->header;
@@ -355,10 +355,8 @@ void Perception::updateCellsClassification()
 
 }
 
-void Perception::computeHeuristic(int goalIndex)
+void Perception::precomputeHeuristic()
 {
-    int goalX = goalIndex % numCellsX_;
-    int goalY = goalIndex / numCellsX_;
 
     /// TODO:
     /// varra as celulas dentro dos limites conhecidos do mapa 'planningTypeGrid_'
@@ -382,10 +380,22 @@ void Perception::computeHeuristic(int goalIndex)
         {
             int i = x + y * numCellsX_;
             gValueGrid_[i] = DBL_MAX;
-            double distance = sqrt(pow(x - goalX, 2.0) + pow(y - goalY, 2.0));
-            hValueGrid_[i] = distance;
             fValueGrid_[i] = DBL_MAX;
             parentGrid_[i] = -1;
+            
+            float minDistance = FLT_MAX;
+            for (auto indices : frontierCentersIndices)
+            {
+                int fx = indices % numCellsX_;
+                int fy = indices / numCellsX_;
+
+                float distance = sqrt(pow(fx - x, 2.0) + pow(fy - y, 2.0));
+                if (distance < minDistance)
+                {
+                    minDistance = distance;
+                }
+            }
+            hValueGrid_[i] = minDistance;
         }
     }
 
@@ -648,30 +658,31 @@ int Perception::clusterFrontiersAndReturnIndexOfClosestOne(int robotCellIndex)
         return -1;
     else{
 
-        // Select nearest frontier among the filtered frontiers
-        int nearestFrontierIndex=-1;
-        float distance = DBL_MAX;
+        // // Select nearest frontier among the filtered frontiers
+        // int nearestFrontierIndex=-1;
+        // float distance = DBL_MAX;
 
-        int rx = robotCellIndex % numCellsX_;
-        int ry = robotCellIndex / numCellsX_;
-        for(int k=0;k<frontierCentersIndices.size();k++){
-            int nFx = frontierCentersIndices[k] % numCellsX_;
-            int nFy = frontierCentersIndices[k] / numCellsX_;
-            float d = sqrt(pow(rx-nFx,2.0)+pow(ry-nFy,2.0));
-            if(d < distance)
-            {
-                distance = d;
-                nearestFrontierIndex = frontierCentersIndices[k];
-            }
-        }
+        // int rx = robotCellIndex % numCellsX_;
+        // int ry = robotCellIndex / numCellsX_;
+        // for(int k=0;k<frontierCentersIndices.size();k++){
+        //     int nFx = frontierCentersIndices[k] % numCellsX_;
+        //     int nFy = frontierCentersIndices[k] / numCellsX_;
+        //     float d = sqrt(pow(rx-nFx,2.0)+pow(ry-nFy,2.0));
+        //     if(d < distance)
+        //     {
+        //         distance = d;
+        //         nearestFrontierIndex = frontierCentersIndices[k];
+        //     }
+        // }
 
-        // Clear frontiers that were not selected
-        for(int k=0;k<frontierCentersIndices.size();k++){
-            if(frontierCentersIndices[k] != nearestFrontierIndex)
-                planningTypeGrid_[frontierCentersIndices[k]] = PLAN_MARKEDGOALS;
-        }
+        // // Clear frontiers that were not selected
+        // for(int k=0;k<frontierCentersIndices.size();k++){
+        //     if(frontierCentersIndices[k] != nearestFrontierIndex)
+        //         planningTypeGrid_[frontierCentersIndices[k]] = PLAN_MARKEDGOALS;
+        // }
 
-        return nearestFrontierIndex;
+        // return nearestFrontierIndex;
+        return -1;
     }
 }
 

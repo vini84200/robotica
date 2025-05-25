@@ -42,7 +42,7 @@ public:
 private:
 
     void updateCellsClassification();
-    void computeHeuristic(int goalIndex);
+    void precomputeHeuristic();
     int computeShortestPathToFrontier(int robotIndex);
     
     void updateGridKnownLimits();
