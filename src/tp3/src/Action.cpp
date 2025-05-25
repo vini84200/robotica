@@ -37,7 +37,7 @@ void Action::followDirection(double angle)
     }
     else
     {
-        linVel = FORWARD_VELOCITY;
+        linVel = FORWARD_VELOCITY * ((ANGLE_THRESHOLD - fabs(angle)) / ANGLE_THRESHOLD);
         angVel = ROTATION_VELOCITY * angle / ANGLE_THRESHOLD;
     }
 }

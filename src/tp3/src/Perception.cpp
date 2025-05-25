@@ -140,36 +140,37 @@ void Perception::receiveGridmap(const nav_msgs::msg::OccupancyGrid::ConstSharedP
 
     // Select center of nearest viable frontier
     int nearestFrontierIndex = clusterFrontiersAndReturnIndexOfClosestOne(robotIndexInFreeSpace);
-    // if(nearestFrontierIndex != -1){
 
-        // Compute A*
-        // first - compute heuristic in all cells (euclidian distance to the goal)
-        precomputeHeuristic();
-        // second - compute the A* algorithm
-        int goal = computeShortestPathToFrontier(robotIndexInFreeSpace);
+    // Compute A*
+    // first - compute heuristic in all cells (euclidian distance to the goal)
+    precomputeHeuristic();
+    // second - compute the A* algorithm
+    int goal = computeShortestPathToFrontier(robotIndexInFreeSpace);
 
-        // Printing the index of the goal cell, must be the same as 'nearestFrontierIndex'
-        std::cout << "goal " << goal << std::endl; //
+    // Printing the index of the goal cell, must be the same as 'nearestFrontierIndex'
+    std::cout << "goal " << goal << std::endl; //
 
-        // Mark path cells for vizualization
-        markPathCells(goal);
+    if (goal == -1) {
+        validDirection_ = false;
+    } else {
+        validDirection_ = true;
+    }
 
-        // Compute direction of navigation based on the path
-        double yaw = computeDirectionOfNavigation(robotIndexInFreeSpace, goal);
-        directionOfNavigation_ = normalizeAngleDEG(RAD2DEG(yaw)-robotPose.theta);
-        validDirection_=true;
+    // Mark path cells for vizualization
+    markPathCells(goal);
 
-        // Update and publish direction of navigation
-        msg_directionOfNavigation_.header = value->header;
-        msg_directionOfNavigation_.pose.position.x = robotPose.x;
-        msg_directionOfNavigation_.pose.position.y = robotPose.y;
-        msg_directionOfNavigation_.pose.position.z = 0;
-        tf2::Quaternion quat_tf;
-        quat_tf.setRPY( 0, 0, yaw );
-        msg_directionOfNavigation_.pose.orientation=tf2::toMsg(quat_tf);
-    // }else{
-    //     validDirection_=false;
-    // }
+    // Compute direction of navigation based on the path
+    double yaw = computeDirectionOfNavigation(robotIndexInFreeSpace, goal);
+    directionOfNavigation_ = normalizeAngleDEG(RAD2DEG(yaw)-robotPose.theta);
+
+    // Update and publish direction of navigation
+    msg_directionOfNavigation_.header = value->header;
+    msg_directionOfNavigation_.pose.position.x = robotPose.x;
+    msg_directionOfNavigation_.pose.position.y = robotPose.y;
+    msg_directionOfNavigation_.pose.position.z = 0;
+    tf2::Quaternion quat_tf;
+    quat_tf.setRPY( 0, 0, yaw );
+    msg_directionOfNavigation_.pose.orientation=tf2::toMsg(quat_tf);
 
     // Update messages
     msg_occTypes_.header = value->header;
@@ -450,15 +451,8 @@ int Perception::computeShortestPathToFrontier(int robotCellIndex)
 
     pq.push(inicio);
 
-    std::cout << "ASTAR *" << std::endl;
-    int i  = 0;
-
     /// Completar algoritmo A Star, consultando a fila enquanto ela nao estiver vazia
     while(!pq.empty()) {
-        i++;
-        if (i % 1000 == 0) {
-            std::cout << "A* iteration: " << i << std::endl;
-        }
         auto node = pq.top();
         pq.pop();
         int id = node.second;
@@ -468,7 +462,6 @@ int Perception::computeShortestPathToFrontier(int robotCellIndex)
 
         if (this->isGoal(id)) {
             goal = id;
-            std::cout << "Goal found at cell: " << goal << std::endl;
             return id;
         }
 
