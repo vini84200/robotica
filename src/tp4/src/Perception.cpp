@@ -40,10 +40,10 @@ void Perception::MCL_sampling(const Action &u)
     // particles_[i].p.y
     // particles_[i].p.theta
 
-    const double ALFA_1 = 0.04;
-    const double ALFA_2 = 0.04;
-    const double ALFA_3 = 0.04;
-    const double ALFA_4 = 0.04;
+    const double ALFA_1 = 0.4;
+    const double ALFA_2 = 0.4;
+    const double ALFA_3 = 0.4;
+    const double ALFA_4 = 0.4;
 
     std::normal_distribution<double> samplerRot1(0, ALFA_1 * u.rot1 + ALFA_2 * u.trans);
     std::normal_distribution<double> samplerTrans(0, ALFA_3 * u.trans + ALFA_4 * (u.rot1 + u.rot2));
@@ -113,23 +113,27 @@ void Perception::MCL_resampling()
     // gere uma nova geração de particulas com o mesmo tamanho do conjunto atual
 
     std::vector<Particle> nextGeneration;
-    int n = particles_.size();
-    double min = 0.0;
-    double max = 1.0/n;
+    int N = numParticles_;
+    nextGeneration.reserve(N);
+    double max = 1.0/N;
 
-    std::uniform_real_distribution<double> samplerU(min,max);
-    double amostra = samplerU(*generator_);
+    std::uniform_real_distribution<double> dist(0.0, 1.0/N);
+    double r = dist(*generator_);
     double c = particles_[0].w;
-
-    int i = 1;
-    for (int j = 0; j < n; j++) {
-        double u = amostra + 1./n * (j-1.);
-        while (u > c) {
-            i = i+1;
-            c = c + particles_[i].w;
+    int i = 0;
+    double U;
+    for (int j = 0; j < N; j++) {
+        U = r + 1./N * j;
+        while (U > c) {
+            i++;
+            if (i >= N) i = N-1;
+            c += particles_[i].w;
         }
         nextGeneration.push_back( particles_[i]);
     }
+
+    printf("P %d\n", nextGeneration.size());
+    assert(nextGeneration.size() == numParticles_);
 
     particles_ = nextGeneration;
 }
