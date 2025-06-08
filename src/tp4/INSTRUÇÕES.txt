@@ -1,0 +1,61 @@
+_______________________________________________________________________________
+
+    INSTALAÇÃO 
+_______________________________________________________________________________
+    
+1. Instalando e compilando o pacote do ROS do Trabalho 4 dentro do nosso workspace
+    
+1.1. No workspace usada nesta disciplina, copie na pasta src o pacote descompactado 'tp4'. Deverá ficar assim:
+    CAMINHO_DO_WORKSPACE/
+        build/
+        install/
+        log/
+        src/
+          phi_aria/
+          tp1/ 
+          tp2/
+          tp3/
+          tp4/  <--- NOVO PACOTE
+
+1.2. Para compilar os pacotes, basta digitar colcon build DENTRO DA PASTA PRINCIPAL do workspace. 
+Pode ser necessário repetir o comando algumas vezes para a compilação completar 100% com sucesso.
+    colcon build
+    
+2. Este trabalho utiliza o pacote 'map_server' do ROS, que não é instalado por padrão (na maquina virtual não está instalado)
+Para tal, vá num terminal e digite:
+    sudo apt install ros-humble-nav2-map-server
+
+_______________________________________________________________________________
+
+    COMPILANDO O CÓDIGO 
+_______________________________________________________________________________
+
+Sempre que se quiser recompilar o código, basta usar novamente o comando colcon build.
+Toda vez que esse comando roda, são recompilados os pacotes contendo arquivos que sofreram alguma alteração:
+    colcon build
+_______________________________________________________________________________
+
+    RODANDO O CÓDIGO 
+_______________________________________________________________________________
+
+1. Primeiro é preciso abrir o simulador MobileSim e selecionar um mapa no formato '.map' disponível na pasta 'maps' fornecida dentro do pacote ROS ('denseMap.map', 'sparseMap.map' ou 'ambiguousMap.map')
+
+2. Inicie a conexão com o robô através da RosARIA, indicando qual mapa que será usado no processo de localização. 
+   Para isso digite em um terminal (sempre dentro do workspace):
+      ros2 launch tp4 p3dx-rosaria.launch.py map_name:=denseMap
+   ou 
+      ros2 launch tp4 p3dx-rosaria.launch.py map_name:=sparseMap
+   ou 
+      ros2 launch tp4 p3dx-rosaria.launch.py map_name:=ambiguousMap
+
+Nessa etapa, o robô será ligado no simulador (o campo de visão dele ficará azul) e o visualizador RVIZ será aberto, já mostrando o mapa e o robô com as leituras dos sensores.
+
+3. Para realizar a localização, rode o código do trabalho 4. Abra um segundo terminal e digite:
+    ros2 run tp4 localization
+    
+4. Note que o robô ficará parado. Para a localização funcionar, o robô precisa se mover. Mova o robô usando algum dos trabalhos anteriores (tp1 ou tp3). Por exemplo, rode o código do trabalho 1 em um novo terminal:
+    ros2 run tp1 navigation
+    
+   Se quiser andar no modo manual, use as teclas 'w', 'a', 's', 'd'.
+    
+OBS: para visualizar os diferentes mapas, desmarque/marque o topico adequado no RViz
